@@ -1,5 +1,10 @@
 package com.example.coffeeshop.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -9,7 +14,7 @@ import com.example.coffeeshop.ui.auth.SignupScreen
 import com.example.coffeeshop.ui.home.HomeScreen
 import com.example.coffeeshop.ui.splash.SplashScreen
 import com.example.coffeeshop.ui.auth.ForgotPasswordScreen
-import com.example.coffeeshop.ui.profile.ProfileScreen // ✅ Modified
+import com.example.coffeeshop.ui.profile.ProfileScreen
 import com.example.coffeeshop.ui.menu.MenuScreen
 import com.example.coffeeshop.ui.cart.CartScreen
 import com.example.coffeeshop.ui.admin.*
@@ -25,7 +30,20 @@ fun NavGraph(start: String = Screen.Splash.route) {
 
     NavHost(
         navController = navController,
-        startDestination = start
+        startDestination = start,
+        // ✅ ADDED GLOBAL SMOOTH TRANSITIONS HERE
+        enterTransition = {
+            slideInHorizontally(initialOffsetX = { 1000 }, animationSpec = tween(500)) + fadeIn(animationSpec = tween(500))
+        },
+        exitTransition = {
+            slideOutHorizontally(targetOffsetX = { -1000 }, animationSpec = tween(500)) + fadeOut(animationSpec = tween(500))
+        },
+        popEnterTransition = {
+            slideInHorizontally(initialOffsetX = { -1000 }, animationSpec = tween(500)) + fadeIn(animationSpec = tween(500))
+        },
+        popExitTransition = {
+            slideOutHorizontally(targetOffsetX = { 1000 }, animationSpec = tween(500)) + fadeOut(animationSpec = tween(500))
+        }
     ) {
 
         // SPLASH
@@ -68,13 +86,13 @@ fun NavGraph(start: String = Screen.Splash.route) {
                         .addOnSuccessListener { doc ->
                             val role = doc.getString("role") ?: "user"
                             if (role == "admin") {
-                                navController.navigate(Screen.AdminHome.route){ popUpTo(Screen.Login.route){ inclusive = true } }
+                                navController.navigate(Screen.AdminHome.route){ popUpTo(0) }
                             } else {
-                                navController.navigate(Screen.Home.route){ popUpTo(Screen.Login.route){ inclusive = true } }
+                                navController.navigate(Screen.Home.route){ popUpTo(0) }
                             }
                         }
                         .addOnFailureListener {
-                            navController.navigate(Screen.Home.route){ popUpTo(Screen.Login.route){ inclusive = true } }
+                            navController.navigate(Screen.Home.route){ popUpTo(0) }
                         }
                 }
             )
@@ -92,9 +110,7 @@ fun NavGraph(start: String = Screen.Splash.route) {
             SignupScreen(
                 goLogin = { navController.popBackStack() },
                 success = {
-                    navController.navigate(Screen.Home.route){
-                        popUpTo(Screen.Login.route){ inclusive = true }
-                    }
+                    navController.navigate(Screen.Home.route){ popUpTo(0) }
                 }
             )
         }
@@ -136,7 +152,7 @@ fun NavGraph(start: String = Screen.Splash.route) {
                 logout = {
                     navController.navigate(Screen.Login.route){ popUpTo(0) }
                 },
-                goToMenu = { // ✅ Added navigation event for the fallback button
+                goToMenu = {
                     navController.navigate(Screen.Menu.route)
                 }
             )

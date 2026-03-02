@@ -6,24 +6,29 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -34,6 +39,7 @@ import com.example.coffeeshop.ui.theme.CoffeeBrown
 import com.example.coffeeshop.ui.theme.Cream
 import com.example.coffeeshop.ui.theme.Montserrat
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,221 +47,221 @@ fun HomeScreen(
     logout: () -> Unit,
     onProfileClick: () -> Unit,
     onMenuClick: () -> Unit,
-    onAboutClick: () -> Unit = {}, // Default parameter prevents NavGraph build errors
+    onAboutClick: () -> Unit = {},
     vm: MenuViewModel = hiltViewModel()
 ) {
     val user = FirebaseAuth.getInstance().currentUser
     val menuItems by vm.menuItems
 
-    // Animation State
-    var startAnimation by remember { mutableStateOf(false) }
+    // Animation States for a smooth, staggered entry effect
+    var showHero by remember { mutableStateOf(false) }
+    var showContent by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        startAnimation = true
+        showHero = true
+        delay(150) // Slight delay so the bottom content flows in right after the hero
+        showContent = true
     }
 
-    Scaffold(
-        containerColor = Cream
-    ) { padding ->
+    Scaffold(containerColor = Cream) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Header Section
-            Row(
+            // ================= HERO SECTION =================
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 24.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Good Morning,",
-                        fontFamily = Montserrat,
-                        color = Color.Gray,
-                        fontSize = 14.sp
+                    .height(290.dp)
+                    .clip(RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 40.dp))
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(CoffeeBrown, Color(0xFF3E2723))
+                        )
                     )
-                    Text(
-                        text = user?.displayName ?: "Coffee Lover",
-                        fontFamily = BebasNeue,
-                        fontSize = 28.sp,
-                        color = CoffeeBrown
-                    )
-                }
-
-                IconButton(
-                    onClick = onProfileClick,
-                    modifier = Modifier
-                        .size(50.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                ) {
-                    Icon(Icons.Outlined.Notifications, contentDescription = "Profile", tint = CoffeeBrown)
-                }
-            }
-
-            // Animated Welcome Section
-            AnimatedVisibility(
-                visible = startAnimation,
-                enter = slideInVertically(
-                    initialOffsetY = { 50 },
-                    animationSpec = tween(durationMillis = 800)
-                ) + fadeIn(animationSpec = tween(durationMillis = 800))
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 32.dp)
                 ) {
-                    Text(
-                        text = "WELCOME TO BREW-N-BEANS!",
-                        fontFamily = BebasNeue,
-                        fontSize = 32.sp,
-                        color = CoffeeBrown,
-                        textAlign = TextAlign.Center
-                    )
+                    // Top Bar with Restored Profile Initial
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("GOOD MORNING,", fontFamily = Montserrat, color = Color.LightGray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(user?.displayName ?: "COFFEE LOVER", fontFamily = BebasNeue, fontSize = 28.sp, color = Color.White)
+                        }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "Hand-crafted coffee, fresh sandwiches, and decadent desserts made just for you.",
-                        fontFamily = Montserrat,
-                        fontSize = 14.sp,
-                        color = Color.DarkGray,
-                        textAlign = TextAlign.Center,
-                        lineHeight = 20.sp
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Best Sellers Grid Section
-            val bestSellers = menuItems.take(4) // Grabs the first 4 items from your Firebase Menu
-
-            if (bestSellers.isNotEmpty()) {
-                Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                    Text(
-                        text = "OUR BEST SELLERS",
-                        fontFamily = BebasNeue,
-                        fontSize = 24.sp,
-                        color = CoffeeBrown
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // 2x2 Grid Layout
-                    val chunkedItems = bestSellers.chunked(2)
-                    chunkedItems.forEach { rowItems ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        // Profile Avatar
+                        val initial = user?.displayName?.firstOrNull()?.uppercase() ?: "U"
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.2f))
+                                .clickable { onProfileClick() },
+                            contentAlignment = Alignment.Center
                         ) {
-                            rowItems.forEach { item ->
-                                BestSellerCard(item = item, modifier = Modifier.weight(1f))
-                            }
-                            // Fill empty space if there's an odd number of items
-                            if (rowItems.size == 1) {
-                                Spacer(modifier = Modifier.weight(1f))
+                            Text(text = initial, fontFamily = BebasNeue, fontSize = 24.sp, color = Color.White)
+                        }
+                    }
+
+                    Spacer(Modifier.height(32.dp))
+
+                    AnimatedVisibility(
+                        visible = showHero,
+                        enter = slideInVertically(initialOffsetY = { 50 }, animationSpec = tween(600)) + fadeIn(tween(600))
+                    ) {
+                        Column {
+                            Text("IT'S A GREAT DAY\nFOR COFFEE.", fontFamily = BebasNeue, fontSize = 36.sp, color = Color.White, lineHeight = 38.sp)
+                            Spacer(Modifier.height(16.dp))
+                            Button(
+                                onClick = onMenuClick,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Cream)
+                            ) {
+                                Text("ORDER NOW", fontFamily = BebasNeue, fontSize = 18.sp, color = CoffeeBrown)
+                                Spacer(Modifier.width(8.dp))
+                                Icon(Icons.Default.ArrowForward, contentDescription = null, tint = CoffeeBrown, modifier = Modifier.size(18.dp))
                             }
                         }
-                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(Modifier.height(24.dp))
 
-            // Menu Redirect Section
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(2.dp)
+            // ================= STAGGERED CONTENT =================
+            AnimatedVisibility(
+                visible = showContent,
+                enter = slideInVertically(initialOffsetY = { 100 }, animationSpec = tween(700)) + fadeIn(tween(700))
             ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "HUNGRY?",
-                        fontFamily = BebasNeue,
-                        fontSize = 28.sp,
-                        color = CoffeeBrown
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Your cravings, delivered right to your table. Explore our full catalog of premium items.",
-                        fontFamily = Montserrat,
-                        fontSize = 14.sp,
-                        color = Color.DarkGray,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = onMenuClick,
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = CoffeeBrown)
+                Column {
+
+                    // --- 1. CATEGORIES MODULE ---
+                    Text("CATEGORIES", fontFamily = BebasNeue, fontSize = 24.sp, color = CoffeeBrown, modifier = Modifier.padding(horizontal = 24.dp))
+                    Spacer(Modifier.height(12.dp))
+                    val categories = listOf("Coffee", "Sandwiches", "Croissants", "Desserts")
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text("EXPLORE OUR MENU", fontFamily = BebasNeue, fontSize = 18.sp, color = Color.White)
+                        items(categories) { category ->
+                            Surface(
+                                modifier = Modifier.clickable { onMenuClick() },
+                                color = Color.White,
+                                shape = RoundedCornerShape(16.dp),
+                                shadowElevation = 2.dp
+                            ) {
+                                Text(
+                                    text = category,
+                                    fontFamily = Montserrat,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = CoffeeBrown,
+                                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                                )
+                            }
+                        }
                     }
+
+                    Spacer(Modifier.height(32.dp))
+
+                    // --- 2. SPECIAL PROMO MODULE ---
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFE5D3B3)), // Lighter Cream Gold
+                        elevation = CardDefaults.cardElevation(2.dp)
+                    ) {
+                        Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.LocalOffer, contentDescription = null, tint = CoffeeBrown, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("SPECIAL OFFER", fontFamily = Montserrat, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = CoffeeBrown)
+                                }
+                                Spacer(Modifier.height(8.dp))
+                                Text("BUY 1 GET 1 FREE", fontFamily = BebasNeue, fontSize = 26.sp, color = Color.Black)
+                                Text("On all Iced Coffees & Frappes today!", fontFamily = Montserrat, fontSize = 12.sp, color = Color.DarkGray)
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(32.dp))
+
+                    // --- 3. BEST SELLERS MODULE ---
+                    val bestSellers = menuItems.shuffled().take(4)
+                    if (bestSellers.isNotEmpty()) {
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Bottom
+                            ) {
+                                Text("POPULAR NOW", fontFamily = BebasNeue, fontSize = 24.sp, color = CoffeeBrown)
+                                Text("See All", fontFamily = Montserrat, fontSize = 14.sp, color = Color.Gray, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable { onMenuClick() })
+                            }
+                            Spacer(Modifier.height(16.dp))
+
+                            // 2x2 Grid
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                bestSellers.take(2).forEach { item ->
+                                    PremiumItemCard(item = item, modifier = Modifier.weight(1f))
+                                }
+                            }
+                            Spacer(Modifier.height(16.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                bestSellers.drop(2).take(2).forEach { item ->
+                                    PremiumItemCard(item = item, modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(32.dp))
+
+                    // --- 4. ABOUT US MODULE ---
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(2.dp)
+                    ) {
+                        Row(modifier = Modifier.padding(20.dp).clickable { onAboutClick() }, verticalAlignment = Alignment.CenterVertically) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("THE BREW-N-BEANS STORY", fontFamily = BebasNeue, fontSize = 22.sp, color = CoffeeBrown)
+                                Spacer(Modifier.height(4.dp))
+                                Text("Discover the passion behind our hand-crafted blends and artisanal bakes.", fontFamily = Montserrat, fontSize = 12.sp, color = Color.Gray, lineHeight = 18.sp)
+                                Spacer(Modifier.height(12.dp))
+                                Text("READ MORE", fontFamily = Montserrat, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = CoffeeBrown)
+                            }
+                            Spacer(Modifier.width(16.dp))
+                            Box(modifier = Modifier.size(70.dp).clip(RoundedCornerShape(16.dp)).background(Cream)) {
+                                Icon(painterResource(id = android.R.drawable.ic_menu_info_details), contentDescription = null, tint = CoffeeBrown, modifier = Modifier.align(Alignment.Center).size(30.dp))
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(40.dp))
                 }
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // About Us Redirect Section
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = CoffeeBrown),
-                elevation = CardDefaults.cardElevation(4.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "WHO WE ARE",
-                        fontFamily = BebasNeue,
-                        fontSize = 28.sp,
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Discover the story behind Brew-N-Beans. We believe in quality, community, and the perfect pour.",
-                        fontFamily = Montserrat,
-                        fontSize = 14.sp,
-                        color = Cream,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = onAboutClick,
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.White)
-                    ) {
-                        Text("READ OUR STORY", fontFamily = BebasNeue, fontSize = 18.sp, color = CoffeeBrown)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(40.dp)) // Bottom padding
         }
     }
 }
 
 @Composable
-fun BestSellerCard(item: Product, modifier: Modifier = Modifier) {
+fun PremiumItemCard(item: Product, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val imageResId = remember(item.imageResName) {
         context.resources.getIdentifier(item.imageResName, "drawable", context.packageName)
@@ -263,52 +269,23 @@ fun BestSellerCard(item: Product, modifier: Modifier = Modifier) {
 
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        Column(modifier = Modifier.padding(12.dp)) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFF8F8F8)),
+                modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(16.dp)).background(Cream),
                 contentAlignment = Alignment.Center
             ) {
                 if (imageResId != 0) {
-                    Image(
-                        painter = painterResource(id = imageResId),
-                        contentDescription = item.name,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    Image(painterResource(id = imageResId), contentDescription = item.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = item.name,
-                fontFamily = BebasNeue,
-                fontSize = 18.sp,
-                color = Color.Black,
-                maxLines = 1,
-                textAlign = TextAlign.Center
-            )
-
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(item.name, fontFamily = BebasNeue, fontSize = 18.sp, color = Color.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "₹${item.price}",
-                fontFamily = Montserrat,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                color = CoffeeBrown
-            )
+            Text("₹${item.price}", fontFamily = Montserrat, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = CoffeeBrown)
         }
     }
 }
