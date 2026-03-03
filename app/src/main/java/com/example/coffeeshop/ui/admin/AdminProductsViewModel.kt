@@ -1,103 +1,114 @@
-package com.example.coffeeshop.ui.menu
+package com.example.coffeeshop.ui.admin
 
-import androidx.compose.runtime.State
+import android.net.Uri
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.coffeeshop.data.model.Product
-import com.example.coffeeshop.data.repository.CartRepository
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
-class MenuViewModel @Inject constructor(
-    private val cartRepository: CartRepository,
-    private val auth: FirebaseAuth,
+class AdminProductsViewModel @Inject constructor(
     private val db: FirebaseFirestore
 ) : ViewModel() {
 
-    private val _menuItems = mutableStateOf<List<Product>>(emptyList())
-    val menuItems: State<List<Product>> = _menuItems
+    private val storage = FirebaseStorage.getInstance()
 
-    private val _isLoading = mutableStateOf(true)
-    val isLoading: State<Boolean> = _isLoading
+    val products = mutableStateOf<List<Product>>(emptyList())
+    val productActiveStates = mutableStateOf<Map<String, Boolean>>(emptyMap())
+    val isLoading = mutableStateOf(true)
+    val isUploading = mutableStateOf(false)
 
-    val cartState = cartRepository.cartItems
+    init { listenToInventory() }
 
-    private val _favorites = mutableStateOf<Set<String>>(emptySet())
-    val favorites: State<Set<String>> = _favorites
-
-    init {
-        fetchMenu()
-        listenToFavorites()
-    }
-
-    private fun listenToFavorites() {
-        val uid = auth.currentUser?.uid ?: return
-        db.collection("users").document(uid).collection("favorites")
-            .addSnapshotListener { snapshot, error ->
-                if (error != null || snapshot == null) return@addSnapshotListener
-                _favorites.value = snapshot.documents.map { it.id }.toSet()
+    private fun listenToInventory() {
+        db.collection("products").addSnapshotListener { snapshot, error ->
+            if (error != null || snapshot == null) {
+                isLoading.value = false
+                return@addSnapshotListener
             }
+            val fetchedProducts = mutableListOf<Product>()
+            val activeMap = mutableMapOf<String, Boolean>()
+
+            for (doc in snapshot.documents) {
+                val product = doc.toObject(Product::class.java)?.copy(id = doc.id)
+                if (product != null) {
+                    fetchedProducts.add(product)
+                    activeMap[doc.id] = doc.getBoolean("active") ?: true
+                }
+            }
+            products.value = fetchedProducts
+            productActiveStates.value = activeMap
+            isLoading.value = false
+        }
     }
 
-    fun toggleFavorite(product: Product) {
-        val uid = auth.currentUser?.uid ?: return
-        val docRef = db.collection("users").document(uid).collection("favorites").document(product.id)
+    // ✅ NEW: Function to wipe the menu to fix duplicates
+    fun clearAllProducts(onSuccess: () -> Unit) {
+        isLoading.value = true
+        db.collection("products").get().addOnSuccessListener { snapshot ->
+            val batch = db.batch()
+            for (doc in snapshot.documents) {
+                batch.delete(doc.reference)
+            }
+            batch.commit().addOnSuccessListener {
+                onSuccess()
+                isLoading.value = false
+            }
+        }.addOnFailureListener {
+            isLoading.value = false
+        }
+    }
 
-        if (_favorites.value.contains(product.id)) {
-            docRef.delete()
+    fun saveProductWithImage(
+        uri: Uri?,
+        id: String?,
+        name: String,
+        desc: String,
+        price: Int,
+        category: String,
+        calories: String,
+        oldImageRes: String,
+        onSuccess: () -> Unit
+    ) {
+        isUploading.value = true
+        if (uri != null) {
+            val ref = storage.reference.child("product_images/${UUID.randomUUID()}.jpg")
+            ref.putFile(uri).addOnSuccessListener {
+                ref.downloadUrl.addOnSuccessListener { downloadUrl ->
+                    saveToFirestore(id, name, desc, price, category, calories, downloadUrl.toString(), onSuccess)
+                }
+            }.addOnFailureListener { isUploading.value = false }
         } else {
-            val favData = hashMapOf(
-                "productId" to product.id,
-                "name" to product.name,
-                "price" to product.price,
-                "imageResName" to product.imageResName,
-                "addedAt" to System.currentTimeMillis()
-            )
-            docRef.set(favData)
+            saveToFirestore(id, name, desc, price, category, calories, oldImageRes, onSuccess)
         }
     }
 
-    // ✅ FIXED: Now listens directly to Firebase Firestore
-    private fun fetchMenu() {
-        _isLoading.value = true
-        db.collection("products").whereEqualTo("active", true)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null || snapshot == null) {
-                    _isLoading.value = false
-                    return@addSnapshotListener
-                }
-
-                if (snapshot.isEmpty) {
-                    seedDatabaseToFirestore()
-                } else {
-                    val items = snapshot.documents.mapNotNull { doc ->
-                        doc.toObject(Product::class.java)?.copy(id = doc.id)
-                    }
-                    _menuItems.value = items
-                    _isLoading.value = false
-                }
-            }
-    }
-
-    fun addToCart(product: Product) { cartRepository.addItem(product) }
-    fun removeFromCart(product: Product) { cartRepository.removeItem(product) }
-    fun getCartTotalItems(): Int = cartState.values.sumOf { it.first }
-    fun getCartTotalPrice(): Int {
-        var total = 0
-        cartState.forEach { (productId, pair) ->
-            val product = cartRepository.productCache[productId]
-            if (product != null) total += (product.price * pair.first)
+    private fun saveToFirestore(
+        id: String?, name: String, desc: String, price: Int, category: String, calories: String, imageRes: String, onSuccess: () -> Unit
+    ) {
+        val productData = hashMapOf(
+            "name" to name, "description" to desc, "price" to price, "category" to category,
+            "calories" to calories, "imageResName" to imageRes, "active" to true
+        )
+        if (id.isNullOrEmpty()) {
+            val newRef = db.collection("products").document()
+            productData["id"] = newRef.id
+            newRef.set(productData).addOnSuccessListener { isUploading.value = false; onSuccess() }
+        } else {
+            productData["id"] = id
+            db.collection("products").document(id).update(productData as Map<String, Any>).addOnSuccessListener { isUploading.value = false; onSuccess() }
         }
-        return total
     }
 
-    // ✅ FIXED: Uploads the default menu directly to the cloud so Admin can see it
-    private fun seedDatabaseToFirestore() {
+    fun toggleProductStatus(productId: String, currentStatus: Boolean) {
+        db.collection("products").document(productId).update("active", !currentStatus)
+    }
+
+    fun seedDefaultMenu() {
         val defaultMenu = listOf(
             Product("", "Americano", "Rich, full-bodied espresso with hot water.", "15 kcal", 180, "Coffee", "americano"),
             Product("", "Caffè Mocha", "Espresso with bittersweet mocha sauce and steamed milk.", "250 kcal", 220, "Coffee", "caffe_mocha"),
@@ -130,14 +141,9 @@ class MenuViewModel @Inject constructor(
         defaultMenu.forEach { product ->
             val ref = db.collection("products").document()
             val productData = hashMapOf(
-                "id" to ref.id,
-                "name" to product.name,
-                "description" to product.description,
-                "price" to product.price,
-                "category" to product.category,
-                "calories" to product.calories,
-                "imageResName" to product.imageResName,
-                "active" to true
+                "id" to ref.id, "name" to product.name, "description" to product.description,
+                "price" to product.price, "category" to product.category, "calories" to product.calories,
+                "imageResName" to product.imageResName, "active" to true
             )
             ref.set(productData)
         }

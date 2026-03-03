@@ -48,14 +48,12 @@ android {
 }
 
 dependencies {
-
     // Core
     implementation(libs.androidx.core.ktx)
     implementation("androidx.activity:activity-compose:1.9.0")
 
     // Compose BOM
     implementation(platform("androidx.compose:compose-bom:2024.06.00"))
-
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -71,7 +69,10 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
 
-    // ✅ NEW: Google Play Services for Google Sign-In
+    // ✅ NEW: Firebase Storage (For uploading real images)
+    implementation("com.google.firebase:firebase-storage-ktx")
+
+    // Google Play Services for Google Sign-In
     implementation("com.google.android.gms:play-services-auth:21.0.0")
 
     // Hilt

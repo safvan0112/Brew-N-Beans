@@ -6,16 +6,20 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.coffeeshop.ui.auth.LoginScreen
 import com.example.coffeeshop.ui.auth.SignupScreen
 import com.example.coffeeshop.ui.home.HomeScreen
+import com.example.coffeeshop.ui.home.AboutScreen
 import com.example.coffeeshop.ui.splash.SplashScreen
 import com.example.coffeeshop.ui.auth.ForgotPasswordScreen
 import com.example.coffeeshop.ui.profile.ProfileScreen
 import com.example.coffeeshop.ui.menu.MenuScreen
+import com.example.coffeeshop.ui.menu.ProductDetailScreen
 import com.example.coffeeshop.ui.cart.CartScreen
 import com.example.coffeeshop.ui.admin.*
 import com.google.firebase.auth.FirebaseAuth
@@ -31,22 +35,12 @@ fun NavGraph(start: String = Screen.Splash.route) {
     NavHost(
         navController = navController,
         startDestination = start,
-        // ✅ ADDED GLOBAL SMOOTH TRANSITIONS HERE
-        enterTransition = {
-            slideInHorizontally(initialOffsetX = { 1000 }, animationSpec = tween(500)) + fadeIn(animationSpec = tween(500))
-        },
-        exitTransition = {
-            slideOutHorizontally(targetOffsetX = { -1000 }, animationSpec = tween(500)) + fadeOut(animationSpec = tween(500))
-        },
-        popEnterTransition = {
-            slideInHorizontally(initialOffsetX = { -1000 }, animationSpec = tween(500)) + fadeIn(animationSpec = tween(500))
-        },
-        popExitTransition = {
-            slideOutHorizontally(targetOffsetX = { 1000 }, animationSpec = tween(500)) + fadeOut(animationSpec = tween(500))
-        }
+        enterTransition = { slideInHorizontally(initialOffsetX = { 1000 }, animationSpec = tween(500)) + fadeIn(animationSpec = tween(500)) },
+        exitTransition = { slideOutHorizontally(targetOffsetX = { -1000 }, animationSpec = tween(500)) + fadeOut(animationSpec = tween(500)) },
+        popEnterTransition = { slideInHorizontally(initialOffsetX = { -1000 }, animationSpec = tween(500)) + fadeIn(animationSpec = tween(500)) },
+        popExitTransition = { slideOutHorizontally(targetOffsetX = { 1000 }, animationSpec = tween(500)) + fadeOut(animationSpec = tween(500)) }
     ) {
 
-        // SPLASH
         composable(Screen.Splash.route) {
             SplashScreen(
                 goHome = {
@@ -69,13 +63,10 @@ fun NavGraph(start: String = Screen.Splash.route) {
                             navController.navigate(Screen.Home.route){ popUpTo(0) }
                         }
                 },
-                goLogin = {
-                    navController.navigate(Screen.Login.route){ popUpTo(0) }
-                }
+                goLogin = { navController.navigate(Screen.Login.route){ popUpTo(0) } }
             )
         }
 
-        // LOGIN
         composable(Screen.Login.route) {
             LoginScreen(
                 goSignup = { navController.navigate(Screen.Signup.route) },
@@ -91,74 +82,74 @@ fun NavGraph(start: String = Screen.Splash.route) {
                                 navController.navigate(Screen.Home.route){ popUpTo(0) }
                             }
                         }
-                        .addOnFailureListener {
-                            navController.navigate(Screen.Home.route){ popUpTo(0) }
-                        }
+                        .addOnFailureListener { navController.navigate(Screen.Home.route){ popUpTo(0) } }
                 }
             )
         }
 
-        // FORGOT PASSWORD
         composable(Screen.Forgot.route){
-            ForgotPasswordScreen(
-                goBack = { navController.popBackStack() }
-            )
+            ForgotPasswordScreen(goBack = { navController.popBackStack() })
         }
 
-        // SIGNUP
         composable(Screen.Signup.route) {
             SignupScreen(
                 goLogin = { navController.popBackStack() },
-                success = {
-                    navController.navigate(Screen.Home.route){ popUpTo(0) }
-                }
+                success = { navController.navigate(Screen.Home.route){ popUpTo(0) } }
             )
         }
 
-        // USER HOME
         composable(Screen.Home.route) {
             HomeScreen(
-                logout = {
-                    navController.navigate(Screen.Login.route){ popUpTo(0) }
-                },
-                onProfileClick = {
-                    navController.navigate(Screen.Profile.route)
-                },
-                onMenuClick = {
-                    navController.navigate(Screen.Menu.route)
-                }
+                logout = { navController.navigate(Screen.Login.route){ popUpTo(0) } },
+                onProfileClick = { navController.navigate(Screen.Profile.route) },
+                onMenuClick = { navController.navigate(Screen.Menu.route) },
+                onAboutClick = { navController.navigate("about_screen") },
+                onProductClick = { productId -> navController.navigate("product_detail/$productId") }
             )
         }
 
-        // MENU SCREEN
         composable(Screen.Menu.route) {
             MenuScreen(
+                goBack = { navController.popBackStack() },
+                goToCart = { navController.navigate(Screen.Cart.route) },
+                goToProduct = { productId -> navController.navigate("product_detail/$productId") }
+            )
+        }
+
+        composable(
+            route = "product_detail/{productId}",
+            arguments = listOf(navArgument("productId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val productId = backStackEntry.arguments?.getString("productId") ?: ""
+            ProductDetailScreen(
+                productId = productId,
                 goBack = { navController.popBackStack() },
                 goToCart = { navController.navigate(Screen.Cart.route) }
             )
         }
 
-        // CART SCREEN
         composable(Screen.Cart.route) {
             CartScreen(
-                goBack = { navController.popBackStack() }
+                goBack = { navController.popBackStack() },
+                goHome = { navController.navigate(Screen.Home.route) { popUpTo(Screen.Home.route) { inclusive = true } } }
             )
         }
 
-        // USER PROFILE
+        composable("about_screen") {
+            AboutScreen(goBack = { navController.popBackStack() })
+        }
+
         composable(Screen.Profile.route) {
             ProfileScreen(
                 goBack = { navController.popBackStack() },
-                logout = {
-                    navController.navigate(Screen.Login.route){ popUpTo(0) }
-                },
-                goToMenu = {
-                    navController.navigate(Screen.Menu.route)
-                }
+                logout = { navController.navigate(Screen.Login.route){ popUpTo(0) } },
+                goToMenu = { navController.navigate(Screen.Menu.route) },
+                goToAbout = { navController.navigate("about_screen") }
             )
         }
 
-        // ADMIN LOGIN
+        // ================= ADMIN ROUTES =================
+
         composable(Screen.AdminLogin.route){
             AdminLoginScreen(
                 goSignup={ navController.navigate(Screen.AdminSignup.route) },
@@ -166,24 +157,21 @@ fun NavGraph(start: String = Screen.Splash.route) {
             )
         }
 
-        // ADMIN SIGNUP
         composable(Screen.AdminSignup.route){
-            AdminSignupScreen(
-                goLogin={ navController.popBackStack() }
-            )
+            AdminSignupScreen(goLogin={ navController.popBackStack() })
         }
 
-        // ADMIN HOME
         composable(Screen.AdminHome.route){
             AdminDashboard(
                 logout = { navController.navigate(Screen.Login.route){ popUpTo(0) } },
                 openProfile = { navController.navigate(Screen.AdminProfile.route) },
                 openSettings = { navController.navigate(Screen.AdminSettings.route) },
-                openUsers = { navController.navigate(Screen.AdminUsers.route) }
+                openUsers = { navController.navigate(Screen.AdminUsers.route) },
+                openOrders = { navController.navigate("admin_orders") }, // ✅ Wired Up
+                openProducts = { navController.navigate("admin_products") } // ✅ Wired Up
             )
         }
 
-        // ADMIN PROFILE
         composable(Screen.AdminProfile.route){
             AdminProfileScreen(
                 goBack = { navController.popBackStack() },
@@ -191,16 +179,23 @@ fun NavGraph(start: String = Screen.Splash.route) {
             )
         }
 
-        // ADMIN SETTINGS
         composable(Screen.AdminSettings.route){
-            AdminSettingsScreen(
+            AdminSettingsScreen(goBack = { navController.popBackStack() })
+        }
+
+        composable(Screen.AdminUsers.route){
+            AdminUsersScreen(goBack = { navController.popBackStack() })
+        }
+
+        // ✅ Placeholders for the upcoming screens (avoids crashes)
+        composable("admin_orders") {
+            AdminOrdersScreen(
                 goBack = { navController.popBackStack() }
             )
         }
 
-        // ADMIN USERS
-        composable(Screen.AdminUsers.route){
-            AdminUsersScreen(
+        composable("admin_products") {
+            AdminProductsScreen(
                 goBack = { navController.popBackStack() }
             )
         }
