@@ -53,6 +53,12 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation("androidx.activity:activity-compose:1.9.0")
 
+    // ✅ REQUIRED FOR SPLASH SCREEN THEME
+    implementation("androidx.core:core-splashscreen:1.0.1")
+
+    // ✅ REQUIRED FOR Theme.Material3.Light.NoActionBar
+    implementation("com.google.android.material:material:1.11.0")
+
     // Compose BOM
     implementation(platform("androidx.compose:compose-bom:2024.06.00"))
 
@@ -64,14 +70,14 @@ dependencies {
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.7.7")
 
-    // Firebase BOM (important)
+    // Firebase BOM
     implementation(platform("com.google.firebase:firebase-bom:32.8.0"))
 
     // Firebase Services
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
 
-    // ✅ NEW: Google Play Services for Google Sign-In
+    // Google Sign-In
     implementation("com.google.android.gms:play-services-auth:21.0.0")
 
     // Hilt
@@ -82,7 +88,7 @@ dependencies {
     // Compose Icons
     implementation("androidx.compose.material:material-icons-extended")
 
-    // Coil Image Loader
+    // Coil
     implementation("io.coil-kt:coil-compose:2.6.0")
 
     // Tests

@@ -1,7 +1,9 @@
 package com.example.coffeeshop.ui.admin
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
@@ -12,10 +14,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.coffeeshop.R
 import com.example.coffeeshop.ui.theme.CoffeeBrown
 import com.example.coffeeshop.ui.theme.Cream
 import com.google.firebase.auth.FirebaseAuth
@@ -33,10 +38,27 @@ fun AdminDashboard(
     var menuExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
+        containerColor = Cream,
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Admin Panel 👑", fontWeight = FontWeight.Bold)
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+
+                        Image(
+                            painter = painterResource(R.drawable.logo),
+                            contentDescription = null,
+                            modifier = Modifier.size(34.dp)
+                        )
+
+                        Spacer(Modifier.width(10.dp))
+
+                        Text(
+                            "Admin Panel",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp
+                        )
+                    }
                 },
                 actions = {
 
@@ -93,13 +115,13 @@ fun AdminDashboard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Cream)
                 .padding(padding)
                 .padding(20.dp)
         ) {
 
+            // ADMIN GREETING
             Text(
-                "Welcome Admin ☕",
+                "Welcome Admin",
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
                 color = CoffeeBrown
@@ -107,7 +129,7 @@ fun AdminDashboard(
 
             Text(admin?.email ?: "", color = Color.Gray)
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(26.dp))
 
             Text(
                 "Dashboard Overview",
@@ -115,21 +137,21 @@ fun AdminDashboard(
                 fontWeight = FontWeight.SemiBold
             )
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(18.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 AdminStatCard("Users", "124")
                 AdminStatCard("Orders", "87")
             }
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(16.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 AdminStatCard("Revenue", "₹12k")
                 AdminStatCard("Items", "36")
             }
 
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(30.dp))
 
             Text(
                 "Quick Actions",
@@ -137,7 +159,7 @@ fun AdminDashboard(
                 fontWeight = FontWeight.SemiBold
             )
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(18.dp))
 
             AdminActionButton("Add Product")
             AdminActionButton("Manage Orders")
@@ -151,22 +173,24 @@ fun AdminStatCard(title: String, value: String) {
     Card(
         modifier = Modifier
             .width(150.dp)
-            .height(90.dp),
-        shape = RoundedCornerShape(18.dp),
-        elevation = CardDefaults.cardElevation(5.dp)
+            .height(100.dp)
+            .shadow(4.dp, RoundedCornerShape(20.dp)),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(14.dp),
+                .padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(title, color = Color.Gray)
+
+            Text(title, color = Color.Gray, fontSize = 13.sp)
 
             Text(
                 value,
                 fontWeight = FontWeight.Bold,
-                fontSize = 20.sp,
+                fontSize = 22.sp,
                 color = CoffeeBrown
             )
         }
@@ -182,11 +206,11 @@ fun AdminActionButton(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp)
+            .height(54.dp)
             .padding(bottom = 12.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = ButtonDefaults.buttonColors(containerColor = CoffeeBrown)
     ) {
-        Text(text)
+        Text(text, fontSize = 16.sp)
     }
 }
