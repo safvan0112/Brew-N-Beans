@@ -1,5 +1,6 @@
 package com.example.coffeeshop.ui.splash
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
@@ -7,12 +8,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.coffeeshop.R
 import com.example.coffeeshop.ui.theme.CoffeeBrown
 import com.example.coffeeshop.ui.theme.Cream
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
-import androidx.compose.ui.unit.dp
 
 @Composable
 fun SplashScreen(
@@ -22,7 +25,7 @@ fun SplashScreen(
 
     LaunchedEffect(Unit) {
 
-        delay(1500) // splash delay
+        delay(1500)
 
         val user = FirebaseAuth.getInstance().currentUser
 
@@ -40,14 +43,28 @@ fun SplashScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
+        // ✅ LOGO
+        Image(
+            painter = painterResource(id = R.drawable.logo),
+            contentDescription = "App Logo",
+            modifier = Modifier.size(150.dp)
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // ✅ APP NAME
         Text(
-            text = "Brew-N-Beans ☕",
-            fontSize = 34.sp,
+            text = "Brew-n-Beans",
+            fontSize = 30.sp,
             color = CoffeeBrown
         )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(30.dp))
 
-        CircularProgressIndicator(color = CoffeeBrown)
+        // ✅ LOADING
+        CircularProgressIndicator(
+            color = CoffeeBrown,
+            strokeWidth = 3.dp
+        )
     }
 }
