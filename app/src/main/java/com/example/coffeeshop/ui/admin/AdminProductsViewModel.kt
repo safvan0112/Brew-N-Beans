@@ -46,7 +46,6 @@ class AdminProductsViewModel @Inject constructor(
         }
     }
 
-    // ✅ NEW: Function to wipe the menu to fix duplicates
     fun clearAllProducts(onSuccess: () -> Unit) {
         isLoading.value = true
         db.collection("products").get().addOnSuccessListener { snapshot ->
@@ -138,10 +137,12 @@ class AdminProductsViewModel @Inject constructor(
             Product("", "Saffron Rose Loaf Cake", "Delicate sponge cake infused with aromatic saffron and rose water.", "340 kcal", 240, "Desserts", "saffron_rose_loaf_cake")
         )
 
+        // ✅ FIXED: Uses a strictly fixed Document ID so duplicates can NEVER happen
         defaultMenu.forEach { product ->
-            val ref = db.collection("products").document()
+            val fixedDocId = "default_${product.imageResName}"
+            val ref = db.collection("products").document(fixedDocId)
             val productData = hashMapOf(
-                "id" to ref.id, "name" to product.name, "description" to product.description,
+                "id" to fixedDocId, "name" to product.name, "description" to product.description,
                 "price" to product.price, "category" to product.category, "calories" to product.calories,
                 "imageResName" to product.imageResName, "active" to true
             )

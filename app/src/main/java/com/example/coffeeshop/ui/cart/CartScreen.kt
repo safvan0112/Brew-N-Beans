@@ -144,7 +144,7 @@ fun CartScreen(
                         Button(
                             onClick = {
                                 if (selectedPayment == "ONLINE") {
-                                    val uri = Uri.parse("upi://pay?pa=affanshk021@oksbi&pn=Brew-N-Beans&tn=Coffee Order&am=$grandTotal&cu=INR")
+                                    val uri = Uri.parse("upi://pay?pa=armanmansuri0210@okaxis&pn=Brew-N-Beans&tn=Coffee Order&am=$grandTotal&cu=INR")
                                     val upiIntent = Intent(Intent.ACTION_VIEW, uri)
                                     val chooser = Intent.createChooser(upiIntent, "Pay with...")
                                     try { upiLauncher.launch(chooser) } catch (e: Exception) { vm.errorMessage.value = "No UPI app found." }

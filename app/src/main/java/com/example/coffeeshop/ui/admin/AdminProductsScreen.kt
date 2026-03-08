@@ -3,13 +3,16 @@ package com.example.coffeeshop.ui.admin
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -48,7 +51,11 @@ fun AdminProductsScreen(
     var showForm by remember { mutableStateOf(false) }
     var productToEdit by remember { mutableStateOf<Product?>(null) }
 
-    // ✅ Confirmation Dialog State
+    // Category State
+    var selectedCategory by remember { mutableStateOf("All") }
+    val categories = listOf("All", "Coffee", "Sandwiches", "Croissants", "Desserts")
+    val filteredProducts = if (selectedCategory == "All") products else products.filter { it.category == selectedCategory }
+
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     if (showDeleteDialog) {
@@ -56,7 +63,7 @@ fun AdminProductsScreen(
             onDismissRequest = { showDeleteDialog = false },
             containerColor = Color.White,
             title = { Text("CLEAR ENTIRE MENU?", fontFamily = BebasNeue, color = Color.Red) },
-            text = { Text("This will delete all duplicates. You can then click Restore once to fix your menu.", fontFamily = Montserrat) },
+            text = { Text("This will wipe all existing menu items from the database.", fontFamily = Montserrat) },
             confirmButton = {
                 TextButton(onClick = { vm.clearAllProducts { showDeleteDialog = false } }) {
                     Text("CLEAR ALL", color = Color.Red, fontFamily = BebasNeue)
@@ -71,23 +78,6 @@ fun AdminProductsScreen(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("MANAGE MENU", fontFamily = BebasNeue, fontSize = 28.sp, color = CoffeeBrown) },
-                navigationIcon = { IconButton(onClick = goBack) { Icon(Icons.Default.ArrowBack, null, tint = CoffeeBrown) } },
-                actions = {
-                    // ✅ NEW: Delete All Icon
-                    IconButton(onClick = { showDeleteDialog = true }) {
-                        Icon(Icons.Default.DeleteForever, contentDescription = "Clear All", tint = Color.Red)
-                    }
-                    // Restore Icon
-                    IconButton(onClick = { vm.seedDefaultMenu() }) {
-                        Icon(Icons.Default.Restore, contentDescription = "Restore", tint = CoffeeBrown)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Cream)
-            )
-        },
         containerColor = Cream,
         floatingActionButton = {
             FloatingActionButton(onClick = { productToEdit = null; showForm = true }, containerColor = CoffeeBrown, contentColor = Color.White) {
@@ -95,15 +85,62 @@ fun AdminProductsScreen(
             }
         }
     ) { padding ->
-        if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = CoffeeBrown)
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.White).clickable { goBack() }, contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = CoffeeBrown)
+                    }
+                    Spacer(Modifier.width(16.dp))
+                    Text("MANAGE MENU", fontFamily = BebasNeue, fontSize = 28.sp, color = CoffeeBrown)
+                }
+                Row {
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(Icons.Default.DeleteForever, contentDescription = "Clear All", tint = Color.Red)
+                    }
+                    IconButton(onClick = { vm.seedDefaultMenu() }) {
+                        Icon(Icons.Default.Restore, contentDescription = "Restore", tint = CoffeeBrown)
+                    }
+                }
             }
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(products) { product ->
-                    val isActive = activeStates[product.id] ?: true
-                    AdminProductCard(product, isActive, onEdit = { productToEdit = product; showForm = true }, onToggleActive = { vm.toggleProductStatus(product.id, isActive) })
+
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(categories) { category ->
+                    val isSelected = selectedCategory == category
+                    val bg by animateColorAsState(if (isSelected) CoffeeBrown else Color.White, label = "bg")
+                    val textC by animateColorAsState(if (isSelected) Color.White else CoffeeBrown, label = "txt")
+
+                    Surface(
+                        modifier = Modifier.clickable { selectedCategory = category },
+                        color = bg,
+                        shape = RoundedCornerShape(24.dp),
+                        shadowElevation = if (isSelected) 4.dp else 1.dp
+                    ) {
+                        Text(category, color = textC, fontFamily = Montserrat, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp))
+                    }
+                }
+            }
+
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = CoffeeBrown)
+                }
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    items(filteredProducts) { product ->
+                        val isActive = activeStates[product.id] ?: true
+                        AdminProductCard(product, isActive, onEdit = { productToEdit = product; showForm = true }, onToggleActive = { vm.toggleProductStatus(product.id, isActive) })
+                    }
                 }
             }
         }
@@ -116,15 +153,14 @@ fun AdminProductsScreen(
     }
 }
 
-// ... Reusable Composable functions (AdminProductCard, ProductFormSheet) remain the same as previous step
-
 @Composable
 fun AdminProductCard(product: Product, isActive: Boolean, onEdit: () -> Unit, onToggleActive: () -> Unit) {
     val context = LocalContext.current
     val imageResId = remember(product.imageResName) { context.resources.getIdentifier(product.imageResName, "drawable", context.packageName) }
 
     Card(
-        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth().border(1.dp, if(isActive) CoffeeBrown.copy(alpha = 0.3f) else Color.Transparent, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = if (isActive) Color.White else Color(0xFFF5F5F5)),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
@@ -163,9 +199,12 @@ fun ProductFormSheet(
     var name by remember { mutableStateOf(product?.name ?: "") }
     var desc by remember { mutableStateOf(product?.description ?: "") }
     var price by remember { mutableStateOf(product?.price?.toString() ?: "") }
-    var category by remember { mutableStateOf(product?.category ?: "") }
     var calories by remember { mutableStateOf(product?.calories ?: "") }
     var oldImageRes by remember { mutableStateOf(product?.imageResName ?: "") }
+
+    val categoryOptions = listOf("Coffee", "Sandwiches", "Croissants", "Desserts")
+    var category by remember { mutableStateOf(product?.category ?: categoryOptions[0]) }
+    var expandedCategory by remember { mutableStateOf(false) }
 
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> selectedImageUri = uri }
@@ -203,10 +242,45 @@ fun ProductFormSheet(
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(value = desc, onValueChange = { desc = it }, label = { Text("Description", fontFamily = Montserrat) }, modifier = Modifier.fillMaxWidth(), maxLines = 3)
             Spacer(Modifier.height(8.dp))
+
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Price (₹)", fontFamily = Montserrat) }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)
-                OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text("Category", fontFamily = Montserrat) }, modifier = Modifier.weight(1f), singleLine = true)
+
+                ExposedDropdownMenuBox(
+                    expanded = expandedCategory,
+                    onExpandedChange = { expandedCategory = !expandedCategory },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        value = category,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Category", fontFamily = Montserrat) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCategory) },
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                            focusedBorderColor = CoffeeBrown,
+                            unfocusedBorderColor = Color(0xFFD6C8B8)
+                        ),
+                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expandedCategory,
+                        onDismissRequest = { expandedCategory = false },
+                        modifier = Modifier.background(Color.White) // ✅ FIXED: Using modifier background instead of containerColor
+                    ) {
+                        categoryOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option, fontFamily = Montserrat) },
+                                onClick = {
+                                    category = option
+                                    expandedCategory = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
+
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(value = calories, onValueChange = { calories = it }, label = { Text("Calories (e.g. 250 kcal)", fontFamily = Montserrat) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
 

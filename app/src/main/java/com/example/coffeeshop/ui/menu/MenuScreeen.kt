@@ -4,8 +4,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -46,7 +48,7 @@ data class Category(val name: String)
 fun MenuScreen(
     goBack: () -> Unit,
     goToCart: () -> Unit,
-    goToProduct: (String) -> Unit = {}, // ✅ ADDED NAVIGATION PARAMETER
+    goToProduct: (String) -> Unit = {},
     vm: MenuViewModel = hiltViewModel(),
     trackerVm: OrderTrackerViewModel = hiltViewModel()
 ) {
@@ -139,7 +141,7 @@ fun MenuScreen(
                             quantity = getQuantity(item.id),
                             onAdd = { vm.addToCart(item) },
                             onRemove = { vm.removeFromCart(item) },
-                            onClick = { goToProduct(item.id) } // ✅ WIRED TO DETAILS
+                            onClick = { goToProduct(item.id) }
                         )
                     }
                 }
@@ -167,6 +169,8 @@ fun ModernMenuCard(item: Product, quantity: Int, onAdd: () -> Unit, onRemove: ()
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            // ✅ CHANGED: Removed the 'copy(alpha = 0.4f)' to make the border completely dark and crisp
+            .border(1.dp, CoffeeBrown, RoundedCornerShape(20.dp))
             .clip(RoundedCornerShape(20.dp))
             .background(Color.White)
             .clickable { onClick() }
@@ -174,8 +178,6 @@ fun ModernMenuCard(item: Product, quantity: Int, onAdd: () -> Unit, onRemove: ()
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(modifier = Modifier.size(110.dp).clip(RoundedCornerShape(16.dp)).background(Cream)) {
-
-            // ✅ FIXED: Changed 'product' to 'item' to match this specific screen
             if (item.imageResName.startsWith("http")) {
                 AsyncImage(model = item.imageResName, contentDescription = item.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
             } else if (imageResId != 0) {
@@ -198,7 +200,7 @@ fun ModernMenuCard(item: Product, quantity: Int, onAdd: () -> Unit, onRemove: ()
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("₹${item.price}", fontFamily = Montserrat, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = CoffeeBrown)
                 if (quantity == 0) {
-                    Surface(onClick = onAdd, shape = RoundedCornerShape(8.dp), color = Cream, border = androidx.compose.foundation.BorderStroke(1.dp, CoffeeBrown)) {
+                    Surface(onClick = onAdd, shape = RoundedCornerShape(8.dp), color = Cream, border = BorderStroke(1.dp, CoffeeBrown)) {
                         Text("ADD", fontFamily = BebasNeue, fontSize = 16.sp, color = CoffeeBrown, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
                     }
                 } else {

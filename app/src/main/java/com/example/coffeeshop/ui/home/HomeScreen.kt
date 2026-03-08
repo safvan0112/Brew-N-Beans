@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -54,7 +55,7 @@ fun HomeScreen(
     onProfileClick: () -> Unit,
     onMenuClick: () -> Unit,
     onAboutClick: () -> Unit = {},
-    onProductClick: (String) -> Unit = {}, // ✅ NEW: For navigating to product details
+    onProductClick: (String) -> Unit = {},
     vm: MenuViewModel = hiltViewModel(),
     trackerVm: OrderTrackerViewModel = hiltViewModel()
 ) {
@@ -65,7 +66,6 @@ fun HomeScreen(
     var showHero by remember { mutableStateOf(false) }
     var showContent by remember { mutableStateOf(false) }
 
-    // ✅ NEW: Dynamic Time Greeting
     val greeting = remember {
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         when (hour) {
@@ -116,7 +116,6 @@ fun HomeScreen(
                 Column(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 32.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column {
-                            // ✅ Dynamic Greeting Applied
                             Text(greeting, fontFamily = Montserrat, color = Color.LightGray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             Text(user?.displayName ?: "COFFEE LOVER", fontFamily = BebasNeue, fontSize = 28.sp, color = Color.White)
                         }
@@ -261,14 +260,15 @@ fun PremiumItemCard(item: Product, modifier: Modifier = Modifier) {
         modifier = modifier,
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        // ✅ NEW: Added solid CoffeeBrown border
+        border = BorderStroke(1.dp, CoffeeBrown)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Box(
                 modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(16.dp)).background(Cream),
                 contentAlignment = Alignment.Center
             ) {
-                // ✅ FIXED: Changed 'product' to 'item' to match this function
                 if (item.imageResName.startsWith("http")) {
                     AsyncImage(
                         model = item.imageResName,

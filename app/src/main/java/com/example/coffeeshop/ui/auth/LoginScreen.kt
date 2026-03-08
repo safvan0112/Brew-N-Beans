@@ -11,7 +11,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -54,11 +53,6 @@ fun LoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
 
-    // OTP States
-    var showOtpDialog by remember { mutableStateOf(false) }
-    var phoneNumber by remember { mutableStateOf("+91") }
-    var otpCode by remember { mutableStateOf("") }
-
     // Google Sign-In Launcher
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -72,71 +66,6 @@ fun LoginScreen(
         } catch (e: Exception) {
             vm.error.value = "Google Sign-In Failed"
         }
-    }
-
-    // OTP Dialog UI
-    if (showOtpDialog) {
-        AlertDialog(
-            onDismissRequest = { showOtpDialog = false },
-            containerColor = Color.White,
-            title = {
-                Text(
-                    text = if (!vm.isOtpSent.value) "ENTER PHONE NUMBER" else "ENTER OTP",
-                    fontFamily = BebasNeue,
-                    fontSize = 24.sp,
-                    color = CoffeeBrown
-                )
-            },
-            text = {
-                Column {
-                    if (!vm.isOtpSent.value) {
-                        Text("We will send a 6-digit verification code to this number.", fontFamily = Montserrat, fontSize = 12.sp, color = Color.Gray)
-                        Spacer(Modifier.height(16.dp))
-                        OutlinedTextField(
-                            value = phoneNumber,
-                            onValueChange = { phoneNumber = it },
-                            label = { Text("Phone Number", fontFamily = Montserrat) },
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CoffeeBrown),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true
-                        )
-                    } else {
-                        Text("Enter the 6-digit code sent to $phoneNumber", fontFamily = Montserrat, fontSize = 12.sp, color = Color.Gray)
-                        Spacer(Modifier.height(16.dp))
-                        OutlinedTextField(
-                            value = otpCode,
-                            onValueChange = { otpCode = it },
-                            label = { Text("6-Digit Code", fontFamily = Montserrat) },
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CoffeeBrown),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (!vm.isOtpSent.value) {
-                            vm.sendOtp(phoneNumber, context as Activity)
-                        } else {
-                            vm.verifyOtp(otpCode) {
-                                showOtpDialog = false
-                                success()
-                            }
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = CoffeeBrown)
-                ) {
-                    Text(if (!vm.isOtpSent.value) "SEND SMS" else "VERIFY", fontFamily = BebasNeue, color = Color.White, fontSize = 16.sp)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showOtpDialog = false }) {
-                    Text("CANCEL", fontFamily = BebasNeue, color = Color.Gray, fontSize = 16.sp)
-                }
-            }
-        )
     }
 
     Column(
@@ -224,7 +153,7 @@ fun LoginScreen(
 
         Spacer(Modifier.height(24.dp))
 
-        // GOOGLE LOGIN BUTTON WIRED UP
+        // GOOGLE LOGIN BUTTON
         OutlinedButton(
             onClick = {
                 val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -242,21 +171,6 @@ fun LoginScreen(
             Text("G", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = Color.DarkGray)
             Spacer(Modifier.width(12.dp))
             Text("Continue with Google", fontFamily = Montserrat, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color.DarkGray)
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        // OTP LOGIN BUTTON WIRED UP
-        OutlinedButton(
-            onClick = { showOtpDialog = true },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, Color(0xFFD6C8B8)),
-            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
-        ) {
-            Icon(Icons.Default.Phone, contentDescription = null, tint = CoffeeBrown)
-            Spacer(Modifier.width(12.dp))
-            Text("Login with Phone (OTP)", fontFamily = Montserrat, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color.DarkGray)
         }
 
         Spacer(Modifier.height(32.dp))
