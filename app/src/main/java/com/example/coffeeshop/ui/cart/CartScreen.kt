@@ -242,7 +242,6 @@ fun CartScreen(
                         }
                         Spacer(Modifier.height(8.dp))
 
-                        // ✅ NEW: Clickable text to open the Bottom Sheet
                         Text(
                             text = "View all available coupons",
                             fontFamily = Montserrat,
@@ -265,6 +264,7 @@ fun CartScreen(
                     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
                         Column(modifier = Modifier.padding(16.dp)) {
 
+                            // ✅ FIXED: Using .entries to correctly access the product key and quantity
                             val pureTotal = vm.cartItems.entries.sumOf { entry ->
                                 val product = vm.productCache[entry.key]
                                 val quantity = entry.value.first
@@ -305,7 +305,7 @@ fun CartScreen(
     }
 }
 
-// ✅ NEW: Reusable Coupon Card for the Bottom Sheet
+// Reusable Coupon Card for the Bottom Sheet
 @Composable
 fun CouponCard(code: String, title: String, desc: String, onClick: () -> Unit) {
     Card(
