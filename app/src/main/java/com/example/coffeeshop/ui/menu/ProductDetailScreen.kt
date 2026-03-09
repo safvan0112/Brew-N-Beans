@@ -40,7 +40,6 @@ fun ProductDetailScreen(
     val context = LocalContext.current
     val product = vm.menuItems.value.find { it.id == productId }
 
-    // Safely exit if product isn't loaded
     if (product == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = CoffeeBrown)
@@ -52,14 +51,12 @@ fun ProductDetailScreen(
         context.resources.getIdentifier(product.imageResName, "drawable", context.packageName)
     }
 
-    // Read Cart and Favorites state directly from ViewModel
     val quantity = vm.cartState[product.id]?.first ?: 0
     val isFavorite = vm.favorites.value.contains(product.id)
 
     Scaffold(
         containerColor = Color.White,
         bottomBar = {
-            // Sticky Bottom Bar for Cart controls
             Surface(
                 color = Color.White,
                 shadowElevation = 16.dp,
@@ -92,7 +89,6 @@ fun ProductDetailScreen(
                             Text("ADD TO CART", fontFamily = BebasNeue, fontSize = 20.sp, color = Color.White)
                         }
                     } else {
-                        // Quantity Controller
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(CoffeeBrown).height(56.dp)
@@ -117,7 +113,6 @@ fun ProductDetailScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Image & Top Actions Layer
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -131,14 +126,12 @@ fun ProductDetailScreen(
                     Image(painterResource(id = imageResId), contentDescription = product.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                 }
 
-                // Custom Top Bar overlay
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 40.dp, start = 20.dp, end = 20.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Back Button
                     Box(
                         modifier = Modifier.size(48.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.9f)).clickable { goBack() },
                         contentAlignment = Alignment.Center
@@ -146,7 +139,6 @@ fun ProductDetailScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = CoffeeBrown)
                     }
 
-                    // Favorite Heart Button
                     Box(
                         modifier = Modifier.size(48.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.9f)).clickable { vm.toggleFavorite(product) },
                         contentAlignment = Alignment.Center
@@ -162,14 +154,13 @@ fun ProductDetailScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // Details Section
             Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                // Title and Calories
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = product.name,
                         fontFamily = BebasNeue,
                         fontSize = 36.sp,
+                        lineHeight = 38.sp, // ✅ FIXED: Added proper gap for 2-line dish names
                         color = Color.Black,
                         modifier = Modifier.weight(1f)
                     )

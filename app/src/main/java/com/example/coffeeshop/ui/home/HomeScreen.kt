@@ -154,8 +154,15 @@ fun HomeScreen(
                     val categories = listOf("Coffee", "Sandwiches", "Croissants", "Desserts")
                     LazyRow(contentPadding = PaddingValues(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(categories) { category ->
-                            Surface(modifier = Modifier.clickable { onMenuClick() }, color = Color.White, shape = RoundedCornerShape(16.dp), shadowElevation = 2.dp) {
-                                Text(category, fontFamily = Montserrat, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = CoffeeBrown, modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp))
+                            // ✅ FIXED: Placed clickable inside Box to constrain the ripple
+                            Surface(
+                                color = Color.White,
+                                shape = RoundedCornerShape(16.dp),
+                                shadowElevation = 2.dp
+                            ) {
+                                Box(modifier = Modifier.clickable { onMenuClick() }) {
+                                    Text(category, fontFamily = Montserrat, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = CoffeeBrown, modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp))
+                                }
                             }
                         }
                     }
@@ -261,7 +268,6 @@ fun PremiumItemCard(item: Product, modifier: Modifier = Modifier) {
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        // ✅ NEW: Added solid CoffeeBrown border
         border = BorderStroke(1.dp, CoffeeBrown)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {

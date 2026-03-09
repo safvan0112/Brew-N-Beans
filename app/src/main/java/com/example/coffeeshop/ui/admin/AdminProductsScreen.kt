@@ -1,6 +1,7 @@
 package com.example.coffeeshop.ui.admin
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
@@ -47,11 +48,11 @@ fun AdminProductsScreen(
     val products by vm.products
     val activeStates by vm.productActiveStates
     val isLoading by vm.isLoading
+    val context = LocalContext.current
 
     var showForm by remember { mutableStateOf(false) }
     var productToEdit by remember { mutableStateOf<Product?>(null) }
 
-    // Category State
     var selectedCategory by remember { mutableStateOf("All") }
     val categories = listOf("All", "Coffee", "Sandwiches", "Croissants", "Desserts")
     val filteredProducts = if (selectedCategory == "All") products else products.filter { it.category == selectedCategory }
@@ -111,6 +112,7 @@ fun AdminProductsScreen(
                 }
             }
 
+            // ✅ FIXED: Placed clickable inside Box to constrain ripple/shadow to RoundedCornerShape
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -121,12 +123,20 @@ fun AdminProductsScreen(
                     val textC by animateColorAsState(if (isSelected) Color.White else CoffeeBrown, label = "txt")
 
                     Surface(
-                        modifier = Modifier.clickable { selectedCategory = category },
                         color = bg,
                         shape = RoundedCornerShape(24.dp),
                         shadowElevation = if (isSelected) 4.dp else 1.dp
                     ) {
-                        Text(category, color = textC, fontFamily = Montserrat, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp))
+                        Box(modifier = Modifier.clickable { selectedCategory = category }) {
+                            Text(
+                                text = category,
+                                color = textC,
+                                fontFamily = Montserrat,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -146,9 +156,19 @@ fun AdminProductsScreen(
         }
 
         if (showForm) {
-            ProductFormSheet(product = productToEdit, isUploading = vm.isUploading.value, onDismiss = { showForm = false }, onSave = { uri, id, name, desc, price, cat, cal, oldImg ->
-                vm.saveProductWithImage(uri, id, name, desc, price, cat, cal, oldImg) { showForm = false }
-            })
+            ProductFormSheet(
+                product = productToEdit,
+                isUploading = vm.isUploading.value,
+                onDismiss = { showForm = false },
+                onSave = { uri, id, name, desc, price, cat, cal, oldImg ->
+                    vm.saveProductWithImage(uri, id, name, desc, price, cat, cal, oldImg,
+                        onSuccess = { showForm = false },
+                        onError = { errorMsg ->
+                            Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+                        }
+                    )
+                }
+            )
         }
     }
 }
@@ -266,7 +286,7 @@ fun ProductFormSheet(
                     ExposedDropdownMenu(
                         expanded = expandedCategory,
                         onDismissRequest = { expandedCategory = false },
-                        modifier = Modifier.background(Color.White) // ✅ FIXED: Using modifier background instead of containerColor
+                        modifier = Modifier.background(Color.White)
                     ) {
                         categoryOptions.forEach { option ->
                             DropdownMenuItem(

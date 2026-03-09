@@ -154,8 +154,16 @@ fun MenuScreen(
 fun CategoryPill(category: Category, isSelected: Boolean, onClick: () -> Unit) {
     val bg by animateColorAsState(if (isSelected) CoffeeBrown else Color.White, label = "bg")
     val textC by animateColorAsState(if (isSelected) Color.White else CoffeeBrown, label = "txt")
-    Surface(modifier = Modifier.clickable { onClick() }, color = bg, shape = RoundedCornerShape(24.dp), shadowElevation = if (isSelected) 4.dp else 1.dp) {
-        Text(category.name, color = textC, fontFamily = Montserrat, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp))
+
+    // ✅ FIXED: Placed clickable inside a Box within the Surface to stop rectangular shadow leakage
+    Surface(
+        color = bg,
+        shape = RoundedCornerShape(24.dp),
+        shadowElevation = if (isSelected) 4.dp else 1.dp
+    ) {
+        Box(modifier = Modifier.clickable { onClick() }) {
+            Text(category.name, color = textC, fontFamily = Montserrat, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp))
+        }
     }
 }
 
@@ -169,7 +177,6 @@ fun ModernMenuCard(item: Product, quantity: Int, onAdd: () -> Unit, onRemove: ()
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            // ✅ CHANGED: Removed the 'copy(alpha = 0.4f)' to make the border completely dark and crisp
             .border(1.dp, CoffeeBrown, RoundedCornerShape(20.dp))
             .clip(RoundedCornerShape(20.dp))
             .background(Color.White)

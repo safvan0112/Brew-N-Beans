@@ -62,6 +62,7 @@ class AdminProductsViewModel @Inject constructor(
         }
     }
 
+    // ✅ FIXED: Added onError callback to catch Firebase Storage Rule Denials
     fun saveProductWithImage(
         uri: Uri?,
         id: String?,
@@ -71,23 +72,27 @@ class AdminProductsViewModel @Inject constructor(
         category: String,
         calories: String,
         oldImageRes: String,
-        onSuccess: () -> Unit
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
     ) {
         isUploading.value = true
         if (uri != null) {
             val ref = storage.reference.child("product_images/${UUID.randomUUID()}.jpg")
             ref.putFile(uri).addOnSuccessListener {
                 ref.downloadUrl.addOnSuccessListener { downloadUrl ->
-                    saveToFirestore(id, name, desc, price, category, calories, downloadUrl.toString(), onSuccess)
+                    saveToFirestore(id, name, desc, price, category, calories, downloadUrl.toString(), onSuccess, onError)
                 }
-            }.addOnFailureListener { isUploading.value = false }
+            }.addOnFailureListener { e ->
+                isUploading.value = false
+                onError("Image upload blocked: ${e.message}. Check Firebase Storage Rules!")
+            }
         } else {
-            saveToFirestore(id, name, desc, price, category, calories, oldImageRes, onSuccess)
+            saveToFirestore(id, name, desc, price, category, calories, oldImageRes, onSuccess, onError)
         }
     }
 
     private fun saveToFirestore(
-        id: String?, name: String, desc: String, price: Int, category: String, calories: String, imageRes: String, onSuccess: () -> Unit
+        id: String?, name: String, desc: String, price: Int, category: String, calories: String, imageRes: String, onSuccess: () -> Unit, onError: (String) -> Unit
     ) {
         val productData = hashMapOf(
             "name" to name, "description" to desc, "price" to price, "category" to category,
@@ -96,10 +101,22 @@ class AdminProductsViewModel @Inject constructor(
         if (id.isNullOrEmpty()) {
             val newRef = db.collection("products").document()
             productData["id"] = newRef.id
-            newRef.set(productData).addOnSuccessListener { isUploading.value = false; onSuccess() }
+            newRef.set(productData).addOnSuccessListener {
+                isUploading.value = false
+                onSuccess()
+            }.addOnFailureListener { e ->
+                isUploading.value = false
+                onError(e.message ?: "Failed to save to database.")
+            }
         } else {
             productData["id"] = id
-            db.collection("products").document(id).update(productData as Map<String, Any>).addOnSuccessListener { isUploading.value = false; onSuccess() }
+            db.collection("products").document(id).update(productData as Map<String, Any>).addOnSuccessListener {
+                isUploading.value = false
+                onSuccess()
+            }.addOnFailureListener { e ->
+                isUploading.value = false
+                onError(e.message ?: "Failed to update database.")
+            }
         }
     }
 
@@ -137,7 +154,6 @@ class AdminProductsViewModel @Inject constructor(
             Product("", "Saffron Rose Loaf Cake", "Delicate sponge cake infused with aromatic saffron and rose water.", "340 kcal", 240, "Desserts", "saffron_rose_loaf_cake")
         )
 
-        // ✅ FIXED: Uses a strictly fixed Document ID so duplicates can NEVER happen
         defaultMenu.forEach { product ->
             val fixedDocId = "default_${product.imageResName}"
             val ref = db.collection("products").document(fixedDocId)

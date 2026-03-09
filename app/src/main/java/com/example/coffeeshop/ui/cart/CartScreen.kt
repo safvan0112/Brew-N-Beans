@@ -3,10 +3,12 @@ package com.example.coffeeshop.ui.cart
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,6 +23,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeliveryDining
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Payment
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,7 +56,6 @@ fun CartScreen(
     val cartItems = vm.cartItems
     val productCache = vm.productCache
 
-    // Math State
     val subtotal = vm.getSubtotal()
     val discount = vm.couponDiscountAmount.value
     val tax = vm.getTaxAmount()
@@ -61,8 +63,6 @@ fun CartScreen(
 
     var selectedPayment by remember { mutableStateOf("ONLINE") }
     var couponInput by remember { mutableStateOf("") }
-
-    // NEW: Coupon Bottom Sheet State
     var showCouponSheet by remember { mutableStateOf(false) }
 
     val isPlacingOrder by vm.isPlacingOrder
@@ -70,19 +70,18 @@ fun CartScreen(
     val errorMessage by vm.errorMessage
     val appliedCoupon by vm.appliedCoupon
 
-    // Strict UPI Launcher
     val upiLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val data = result.data?.getStringExtra("response")?.lowercase() ?: ""
         if (data.isNotEmpty() && (data.contains("status=success") || data.contains("responsecode=00"))) {
             vm.placeOrder("ONLINE")
         } else {
-            vm.errorMessage.value = "Payment failed or was cancelled."
+            vm.errorMessage.value = "Payment failed, blocked, or cancelled."
+            Toast.makeText(context, "If blocked: You cannot pay your own UPI ID.", Toast.LENGTH_LONG).show()
         }
     }
 
     if (orderSuccess) { OrderSuccessAnimation(goHome = goHome); return }
 
-    // --- COUPON BOTTOM SHEET ---
     if (showCouponSheet) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
         ModalBottomSheet(
@@ -127,13 +126,10 @@ fun CartScreen(
             if (cartItems.isNotEmpty()) {
                 Surface(color = Color.White, shadowElevation = 16.dp, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
                     Column(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
-
-                        // Error Message
                         if (errorMessage != null) {
                             Text(errorMessage!!, fontFamily = Montserrat, fontSize = 12.sp, color = Color.Red, modifier = Modifier.padding(bottom = 8.dp))
                         }
 
-                        // Grand Total Display
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Text("GRAND TOTAL", fontFamily = Montserrat, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray)
                             Text("₹$grandTotal", fontFamily = BebasNeue, fontSize = 32.sp, color = CoffeeBrown)
@@ -144,12 +140,26 @@ fun CartScreen(
                         Button(
                             onClick = {
                                 if (selectedPayment == "ONLINE") {
-                                    val uri = Uri.parse("upi://pay?pa=armanmansuri0210@okaxis&pn=Brew-N-Beans&tn=Coffee Order&am=$grandTotal&cu=INR")
+                                    // ✅ FIXED: Cleanest and safest UPI URI to prevent strict bank security blocks
+                                    val uri = Uri.Builder()
+                                        .scheme("upi")
+                                        .authority("pay")
+                                        .appendQueryParameter("pa", "affanshk021@oksbi")
+                                        .appendQueryParameter("pn", "Brew N Beans")
+                                        .appendQueryParameter("tn", "Coffee Order")
+                                        .appendQueryParameter("am", grandTotal.toString())
+                                        .appendQueryParameter("cu", "INR")
+                                        .build()
+
                                     val upiIntent = Intent(Intent.ACTION_VIEW, uri)
-                                    val chooser = Intent.createChooser(upiIntent, "Pay with...")
-                                    try { upiLauncher.launch(chooser) } catch (e: Exception) { vm.errorMessage.value = "No UPI app found." }
+                                    val chooser = Intent.createChooser(upiIntent, "Pay securely with...")
+                                    try {
+                                        upiLauncher.launch(chooser)
+                                    } catch (e: Exception) {
+                                        vm.errorMessage.value = "No UPI app found on this device."
+                                    }
                                 } else {
-                                    vm.placeOrder("COD")
+                                    vm.placeOrder("CAFE")
                                 }
                             },
                             modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -158,7 +168,7 @@ fun CartScreen(
                             enabled = !isPlacingOrder
                         ) {
                             if (isPlacingOrder) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                            else Text(if (selectedPayment == "ONLINE") "PAY ONLINE • ₹$grandTotal" else "PLACE COD ORDER", fontFamily = BebasNeue, fontSize = 20.sp, color = Color.White)
+                            else Text(if (selectedPayment == "ONLINE") "PAY ONLINE • ₹$grandTotal" else "PLACE ORDER", fontFamily = BebasNeue, fontSize = 20.sp, color = Color.White)
                         }
                     }
                 }
@@ -170,92 +180,55 @@ fun CartScreen(
                 Text("Your cart is empty", fontFamily = Montserrat, fontSize = 16.sp, color = Color.Gray)
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 180.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Cart Items
+            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 180.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 items(cartItems.keys.toList()) { productId ->
                     val pair = cartItems[productId]
                     val product = productCache[productId]
                     if (pair != null && product != null) {
-                        CartItemCard(
-                            product = product,
-                            quantity = pair.first,
-                            instructions = pair.second,
-                            onAdd = { vm.addOne(product) },
-                            onRemove = { vm.removeOne(product) },
-                            onInstructionChange = { vm.updateInstructions(product.id, it) }
-                        )
+                        CartItemCard(product, pair.first, pair.second, onAdd = { vm.addOne(product) }, onRemove = { vm.removeOne(product) }, onInstructionChange = { vm.updateInstructions(product.id, it) })
                     }
                 }
 
-                // Payment Method
                 item {
                     Spacer(Modifier.height(10.dp))
                     Text("PAYMENT METHOD", fontFamily = BebasNeue, fontSize = 22.sp, color = CoffeeBrown)
                     Spacer(Modifier.height(8.dp))
-                    PaymentOption(title = "Pay Online (UPI/Card)", icon = Icons.Default.Payment, isSelected = selectedPayment == "ONLINE", onClick = { selectedPayment = "ONLINE" })
+
+                    // ✅ FIXED: Buttons now fully change background, border, and add a checkmark
+                    PaymentOption(title = "Pay Online", icon = Icons.Default.Payment, isSelected = selectedPayment == "ONLINE", onClick = { selectedPayment = "ONLINE" })
                     Spacer(Modifier.height(8.dp))
-                    PaymentOption(title = "Cash on Delivery", icon = Icons.Default.DeliveryDining, isSelected = selectedPayment == "COD", onClick = { selectedPayment = "COD"; if(appliedCoupon == "GPAY5") vm.removeCoupon() })
+                    PaymentOption(title = "Pay at Cafe", icon = Icons.Default.Storefront, isSelected = selectedPayment == "CAFE", onClick = { selectedPayment = "CAFE"; if(appliedCoupon == "GPAY5") vm.removeCoupon() })
                 }
 
-                // Coupons Section
                 item {
                     Spacer(Modifier.height(16.dp))
                     Text("APPLY COUPON", fontFamily = BebasNeue, fontSize = 22.sp, color = CoffeeBrown)
                     Spacer(Modifier.height(8.dp))
 
                     if (appliedCoupon != null) {
-                        // Coupon Applied Card
                         Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))) {
                             Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.LocalOffer, contentDescription = null, tint = Color(0xFF4CAF50))
+                                    Icon(Icons.Default.LocalOffer, null, tint = Color(0xFF4CAF50))
                                     Spacer(Modifier.width(8.dp))
                                     Text("'$appliedCoupon' Applied!", fontFamily = Montserrat, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
                                 }
                                 IconButton(onClick = { vm.removeCoupon() }, modifier = Modifier.size(24.dp)) {
-                                    Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.Red)
+                                    Icon(Icons.Default.Close, null, tint = Color.Red)
                                 }
                             }
                         }
                     } else {
-                        // Coupon Input Field
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedTextField(
-                                value = couponInput,
-                                onValueChange = { couponInput = it.uppercase() },
-                                placeholder = { Text("Enter code", fontFamily = Montserrat, fontSize = 12.sp) },
-                                modifier = Modifier.weight(1f).height(56.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                singleLine = true
-                            )
+                            OutlinedTextField(value = couponInput, onValueChange = { couponInput = it.uppercase() }, placeholder = { Text("Enter code", fontFamily = Montserrat, fontSize = 12.sp) }, modifier = Modifier.weight(1f).height(56.dp), shape = RoundedCornerShape(12.dp), singleLine = true)
                             Spacer(Modifier.width(8.dp))
-                            Button(
-                                onClick = { vm.applyCoupon(couponInput, selectedPayment) },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = CoffeeBrown),
-                                modifier = Modifier.height(56.dp)
-                            ) { Text("APPLY", fontFamily = BebasNeue, fontSize = 16.sp) }
+                            Button(onClick = { vm.applyCoupon(couponInput, selectedPayment) }, shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = CoffeeBrown), modifier = Modifier.height(56.dp)) { Text("APPLY", fontFamily = BebasNeue, fontSize = 16.sp) }
                         }
                         Spacer(Modifier.height(8.dp))
-
-                        Text(
-                            text = "View all available coupons",
-                            fontFamily = Montserrat,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = CoffeeBrown,
-                            modifier = Modifier
-                                .clickable { showCouponSheet = true }
-                                .padding(vertical = 4.dp)
-                        )
+                        Text("View all available coupons", fontFamily = Montserrat, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = CoffeeBrown, modifier = Modifier.clickable { showCouponSheet = true }.padding(vertical = 4.dp))
                     }
                 }
 
-                // Bill Summary
                 item {
                     Spacer(Modifier.height(16.dp))
                     Text("BILL SUMMARY", fontFamily = BebasNeue, fontSize = 22.sp, color = CoffeeBrown)
@@ -263,17 +236,9 @@ fun CartScreen(
 
                     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
                         Column(modifier = Modifier.padding(16.dp)) {
-
-                            // ✅ FIXED: Using .entries to correctly access the product key and quantity
-                            val pureTotal = vm.cartItems.entries.sumOf { entry ->
-                                val product = vm.productCache[entry.key]
-                                val quantity = entry.value.first
-                                (product?.price ?: 0) * quantity
-                            }
-
+                            val pureTotal = vm.cartItems.entries.sumOf { entry -> val p = vm.productCache[entry.key]; val q = entry.value.first; (p?.price ?: 0) * q }
                             BillRow("Item Total", "₹$pureTotal")
 
-                            // Show BOGO Savings if Subtotal is lower than pure Item Total
                             if (pureTotal > subtotal) {
                                 Spacer(Modifier.height(8.dp))
                                 BillRow("BOGO Discount", "-₹${pureTotal - subtotal}", color = Color(0xFF4CAF50))
@@ -305,19 +270,48 @@ fun CartScreen(
     }
 }
 
-// Reusable Coupon Card for the Bottom Sheet
+// ✅ FIXED: Completely redesigned using Card and BorderStroke to guarantee flawless background and border colors
+@Composable
+fun PaymentOption(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, isSelected: Boolean, onClick: () -> Unit) {
+    val borderColor = if (isSelected) Color(0xFF4CAF50) else Color(0xFFE0E0E0)
+    val bgColor = if (isSelected) Color(0xFFF1F8E9) else Color.White
+    val iconColor = if (isSelected) Color(0xFF4CAF50) else CoffeeBrown
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(if (isSelected) 2.dp else 1.dp, borderColor),
+        colors = CardDefaults.cardColors(containerColor = bgColor),
+        elevation = CardDefaults.cardElevation(if (isSelected) 4.dp else 0.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(28.dp))
+            Spacer(Modifier.width(16.dp))
+            Text(
+                text = title,
+                fontFamily = Montserrat,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                color = if (isSelected) Color(0xFF2E7D32) else Color.Black,
+                modifier = Modifier.weight(1f)
+            )
+            if (isSelected) {
+                Icon(Icons.Default.CheckCircle, contentDescription = "Selected", tint = Color(0xFF4CAF50))
+            }
+        }
+    }
+}
+
 @Composable
 fun CouponCard(code: String, title: String, desc: String, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(2.dp)
-    ) {
+    Card(modifier = Modifier.fillMaxWidth().clickable { onClick() }, shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Color(0xFFE8F5E9)).padding(12.dp)) {
-                Icon(Icons.Default.LocalOffer, contentDescription = null, tint = Color(0xFF4CAF50), modifier = Modifier.size(24.dp))
-            }
+            Box(modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Color(0xFFE8F5E9)).padding(12.dp)) { Icon(Icons.Default.LocalOffer, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(24.dp)) }
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -346,7 +340,7 @@ fun OrderSuccessAnimation(goHome: () -> Unit) {
     val scale by animateFloatAsState(targetValue = if (startAnimation) 1.2f else 0f, animationSpec = tween(durationMillis = 800))
     LaunchedEffect(Unit) { startAnimation = true; delay(2500); goHome() }
     Column(modifier = Modifier.fillMaxSize().background(Cream), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Icon(Icons.Default.CheckCircle, contentDescription = "Success", tint = CoffeeBrown, modifier = Modifier.size(100.dp).scale(scale))
+        Icon(Icons.Default.CheckCircle, null, tint = CoffeeBrown, modifier = Modifier.size(100.dp).scale(scale))
         Spacer(Modifier.height(24.dp))
         Text("ORDER PLACED!", fontFamily = BebasNeue, fontSize = 40.sp, color = CoffeeBrown)
         Spacer(Modifier.height(12.dp))
@@ -389,16 +383,5 @@ fun CartItemCard(product: com.example.coffeeshop.data.model.Product, quantity: I
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(value = instructions, onValueChange = onInstructionChange, placeholder = { Text("Any cooking instructions?", fontFamily = Montserrat, fontSize = 12.sp, color = Color.Gray) }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CoffeeBrown, unfocusedBorderColor = Color(0xFFE0E0E0)), textStyle = androidx.compose.ui.text.TextStyle(fontFamily = Montserrat, fontSize = 12.sp))
         }
-    }
-}
-
-@Composable
-fun PaymentOption(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, isSelected: Boolean, onClick: () -> Unit) {
-    val bgColor = if (isSelected) Cream else Color.White
-    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(bgColor).clickable { onClick() }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = CoffeeBrown, modifier = Modifier.size(28.dp))
-        Spacer(Modifier.width(16.dp))
-        Text(title, fontFamily = Montserrat, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, modifier = Modifier.weight(1f))
-        if (isSelected) Icon(Icons.Default.CheckCircle, contentDescription = "Selected", tint = CoffeeBrown)
     }
 }
